@@ -18,6 +18,7 @@ about sensors, PID tuning, position hold, and flight control.
 """
 
 import time
+import atexit
 import threading
 
 from .config import defaults
@@ -171,27 +172,56 @@ class LiteWing:
         from ._connection import setup_sensor_logging
 
         cflib.crtp.init_drivers()
-        cf = Crazyflie(rw_cache="./cache")
         uri = f"udp://{self._ip}"
 
         self._flight_phase = "CONNECTING"
         if self._logger_fn:
             self._logger_fn(f"Connecting to {uri}...")
 
-        # Store for cleanup
-        self._cf_instance = cf
-        self._sync_cf = SyncCrazyflie(uri, cf=cf)
+        # Auto-retry with port recovery (up to 3 attempts)
+        last_error = None
+        for attempt in range(3):
+            cf = Crazyflie(rw_cache="./cache")
+            self._cf_instance = cf
+            self._sync_cf = SyncCrazyflie(uri, cf=cf)
 
-        try:
-            self._sync_cf.open_link()
-        except Exception as e:
-            # Clean up on failure to prevent zombie sockets
-            self._cf_instance = None
-            self._sync_cf = None
+            try:
+                self._sync_cf.open_link()
+                last_error = None
+                break  # Success!
+            except Exception as e:
+                last_error = e
+                self._cf_instance = None
+                self._sync_cf = None
+
+                # Check if it's a port conflict (WinError 10048)
+                if "10048" in str(e) or "Address already in use" in str(e):
+                    if self._logger_fn:
+                        self._logger_fn(
+                            f"Port 2399 busy (previous session). "
+                            f"Recovering... (attempt {attempt + 1}/3)"
+                        )
+                    self._free_port_2399()
+                    time.sleep(2)
+                else:
+                    # Not a port conflict — fail immediately
+                    self._flight_phase = "IDLE"
+                    raise ConnectionError(
+                        f"Failed to connect to {uri}: {e}"
+                    ) from e
+
+        if last_error is not None:
             self._flight_phase = "IDLE"
-            raise ConnectionError(f"Failed to connect to {uri}: {e}") from e
+            raise ConnectionError(
+                f"Failed to connect to {uri} after 3 attempts. "
+                f"Try closing all other Python scripts and wait a few seconds.\n"
+                f"Error: {last_error}"
+            )
 
         self._scf = self._sync_cf
+
+        # Register cleanup so port is ALWAYS freed, even on crash
+        atexit.register(self._atexit_cleanup)
 
         # Attach LEDs
         self._leds.attach(cf)
@@ -274,6 +304,45 @@ class LiteWing:
         self._flight_phase = "IDLE"
         if self._logger_fn:
             self._logger_fn("Disconnected.")
+
+    def _atexit_cleanup(self):
+        """Called automatically when Python exits — ensures port is freed."""
+        try:
+            if self._scf is not None:
+                self.disconnect()
+        except Exception:
+            pass
+
+    @staticmethod
+    def _free_port_2399():
+        """
+        Kill any zombie Python process holding UDP port 2399.
+        This happens when a previous script crashed without disconnecting.
+        """
+        import subprocess
+        import os
+
+        try:
+            # Find process using port 2399
+            result = subprocess.run(
+                ["netstat", "-ano", "-p", "UDP"],
+                capture_output=True, text=True, timeout=5
+            )
+            for line in result.stdout.splitlines():
+                if ":2399 " in line:
+                    parts = line.split()
+                    pid = int(parts[-1])
+                    # Don't kill ourselves!
+                    if pid != os.getpid() and pid != 0:
+                        try:
+                            subprocess.run(
+                                ["taskkill", "/F", "/PID", str(pid)],
+                                capture_output=True, timeout=5
+                            )
+                        except Exception:
+                            pass
+        except Exception:
+            pass
 
     @property
     def is_connected(self):
