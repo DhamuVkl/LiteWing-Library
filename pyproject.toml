@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "litewing"
+version = "0.1.0"
+description = "Beginner-friendly Python library for LiteWing drone control"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [{name = "DhamuVkl"}]
+keywords = ["drone", "crazyflie", "litewing", "education", "robotics"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Education",
+]
+dependencies = ["cflib"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/DhamuVkl/LiteWing"
+Repository = "https://github.com/DhamuVkl/LiteWing"
+Issues = "https://github.com/DhamuVkl/LiteWing/issues"
+
+[tool.setuptools.packages.find]
+include = ["litewing*"]
