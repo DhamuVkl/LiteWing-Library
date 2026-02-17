@@ -138,10 +138,140 @@ class LiteWing:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.emergency_stop()
+        self.disconnect()
         return False
 
     # === Connection ===
+
+    def connect(self):
+        """
+        Connect to the drone and start reading sensor data.
+
+        After calling this, you can read battery, height, position, etc.
+        No motors are started — the drone stays on the ground.
+
+        Usage:
+            drone.connect()
+            print(drone.battery)
+            drone.disconnect()
+
+        Or use the context manager:
+            with LiteWing("192.168.43.42") as drone:
+                drone.connect()
+                print(drone.battery)
+        """
+        if self._scf is not None:
+            if self._logger_fn:
+                self._logger_fn("Already connected!")
+            return
+
+        import cflib.crtp
+        from cflib.crazyflie import Crazyflie
+        from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
+        from ._connection import setup_sensor_logging
+
+        cflib.crtp.init_drivers()
+        cf = Crazyflie(rw_cache="./cache")
+        uri = f"udp://{self._ip}"
+
+        self._flight_phase = "CONNECTING"
+        if self._logger_fn:
+            self._logger_fn(f"Connecting to {uri}...")
+
+        # Store for cleanup
+        self._cf_instance = cf
+        self._sync_cf = SyncCrazyflie(uri, cf=cf)
+
+        try:
+            self._sync_cf.open_link()
+        except Exception as e:
+            # Clean up on failure to prevent zombie sockets
+            self._cf_instance = None
+            self._sync_cf = None
+            self._flight_phase = "IDLE"
+            raise ConnectionError(f"Failed to connect to {uri}: {e}") from e
+
+        self._scf = self._sync_cf
+
+        # Attach LEDs
+        self._leds.attach(cf)
+
+        # Start sensor logging
+        self._log_motion, self._log_battery = setup_sensor_logging(
+            cf,
+            motion_callback=self._motion_callback,
+            battery_callback=self._battery_callback,
+            sensor_period_ms=self.sensor_update_rate,
+            logger=self._logger_fn,
+        )
+
+        # Apply firmware parameters if enabled
+        if self.enable_firmware_params:
+            from ._connection import apply_firmware_parameters
+            apply_firmware_parameters(
+                cf, self.thrust_base, self.z_position_kp, self.z_velocity_kp,
+                logger=self._logger_fn,
+            )
+
+        # Reset position tracking
+        self._position_engine.reset()
+        self._position_hold.reset()
+
+        self._flight_phase = "CONNECTED"
+        if self._logger_fn:
+            self._logger_fn("Connected! Sensor data streaming.")
+
+    def disconnect(self):
+        """
+        Disconnect from the drone and stop sensor logging.
+
+        Safe to call even if not connected.
+        """
+        from ._connection import stop_logging_configs
+
+        # Stop motors if flying
+        if self._flight_active:
+            self._flight_active = False
+            if self._scf and not self.debug_mode:
+                try:
+                    self._scf.cf.commander.send_setpoint(0, 0, 0, 0)
+                except Exception:
+                    pass
+
+        # Stop logging (suppress errors during teardown)
+        try:
+            log_m = getattr(self, '_log_motion', None)
+            log_b = getattr(self, '_log_battery', None)
+            stop_logging_configs(log_m, log_b)
+        except Exception:
+            pass
+        try:
+            self._flight_logger.stop(logger=self._logger_fn)
+        except Exception:
+            pass
+
+        # Detach LEDs
+        try:
+            self._leds.clear()
+            self._leds.detach()
+        except Exception:
+            pass
+
+        # Close link
+        if self._scf is not None:
+            try:
+                sync = getattr(self, '_sync_cf', None)
+                if sync:
+                    sync.close_link()
+            except Exception:
+                pass
+            self._scf = None
+            self._sync_cf = None
+            self._cf_instance = None
+
+        self._flight_phase = "IDLE"
+        if self._logger_fn:
+            self._logger_fn("Disconnected.")
 
     @property
     def is_connected(self):
