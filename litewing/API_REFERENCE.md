@@ -208,8 +208,8 @@ Returned by `drone.read_sensors()`. Read-only snapshot of all sensor values.
 
 | Attribute | Type | Description |
 |---|---|---|
-| `height` | `float` | Estimated height from barometer (meters). |
-| `range_height` | `float` | Height from range finder (meters). |
+| `height` | `float` | Kalman-filtered height estimate from VL53L1x ToF laser (meters). |
+| `range_height` | `float` | Raw height from VL53L1x ToF laser (meters). |
 | `vx` | `float` | Velocity in X axis (m/s). |
 | `vy` | `float` | Velocity in Y axis (m/s). |
 | `x` | `float` | Estimated X position (meters). |
@@ -284,8 +284,8 @@ Records flight data to CSV files.
 | `Timestamp (s)` | seconds | Time since logging started. |
 | `Position X (m)` | meters | Estimated X position. |
 | `Position Y (m)` | meters | Estimated Y position. |
-| `Height (m)` | meters | Barometric height. |
-| `Range (m)` | meters | Range finder height. |
+| `Height (m)` | meters | Kalman-filtered height from ToF laser. |
+| `Range (m)` | meters | Raw ToF laser height. |
 | `Velocity X (m/s)` | m/s | X velocity from optical flow. |
 | `Velocity Y (m/s)` | m/s | Y velocity from optical flow. |
 | `Correction VX` | — | PID correction applied to X. |

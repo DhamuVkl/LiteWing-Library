@@ -4,9 +4,9 @@ LiteWing Sensor Data
 Access live sensor readings from the drone.
 
 The drone has several sensors:
-    - Height sensor (barometer + range finder) — how high the drone is
-    - Optical flow sensor — tracks ground movement to estimate velocity
-    - Battery voltage — monitors remaining power
+    - VL53L1x ToF (Time-of-Flight) laser — measures height to the ground
+    - PMW3901 optical flow sensor — tracks ground movement for velocity/position
+    - Battery voltage monitor — tracks remaining power
 
 Usage:
     sensors = drone.read_sensors()
@@ -24,8 +24,8 @@ class SensorData:
     A snapshot of all sensor readings at a moment in time.
 
     Attributes:
-        height (float): Estimated height from barometer (meters).
-        range_height (float): Height from range finder (meters).
+        height (float): Kalman-filtered height estimate (meters, from VL53L1x ToF laser).
+        range_height (float): Raw height from VL53L1x ToF laser (meters).
         vx (float): Velocity in X axis (m/s, from optical flow).
         vy (float): Velocity in Y axis (m/s, from optical flow).
         x (float): Estimated X position (meters, from dead reckoning).
