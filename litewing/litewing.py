@@ -614,7 +614,7 @@ class LiteWing:
 
         Args:
             distance: Distance in meters (default: drone.maneuver_distance).
-            speed: Movement speed in m/s.
+            speed: Maximum velocity setpoint (m/s).
         """
         if distance is None:
             distance = self.maneuver_distance
@@ -626,7 +626,7 @@ class LiteWing:
 
         Args:
             distance: Distance in meters (default: drone.maneuver_distance).
-            speed: Movement speed in m/s.
+            speed: Maximum velocity setpoint (m/s).
         """
         if distance is None:
             distance = self.maneuver_distance
@@ -638,7 +638,7 @@ class LiteWing:
 
         Args:
             distance: Distance in meters (default: drone.maneuver_distance).
-            speed: Movement speed in m/s.
+            speed: Maximum velocity setpoint (m/s).
         """
         if distance is None:
             distance = self.maneuver_distance
@@ -650,21 +650,85 @@ class LiteWing:
 
         Args:
             distance: Distance in meters (default: drone.maneuver_distance).
-            speed: Movement speed in m/s.
+            speed: Maximum velocity setpoint (m/s).
         """
         if distance is None:
             distance = self.maneuver_distance
         self._execute_movement(-distance, 0.0, speed)
 
     def _execute_movement(self, dx, dy, speed):
-        """Queue a relative movement as a waypoint offset."""
+        """
+        Execute a relative movement using position hold.
+
+        This is a BLOCKING call — it sets the position hold target to the
+        new position and runs a hover loop until the drone arrives (within
+        waypoint_threshold) or times out (waypoint_timeout).
+
+        The `speed` parameter controls the maximum velocity (m/s) by
+        overriding max_correction in the PID controller.
+        """
+        if self._scf is None or not self._flight_active:
+            if self._logger_fn:
+                self._logger_fn("Cannot move — not in flight!")
+            return
+
+        cf = self._cf_instance
         target_x = self._position_engine.x + dx
         target_y = self._position_engine.y + dy
-        self._pending_waypoints = [(target_x, target_y)]
+
+        # Set position hold target to the new position
+        self._position_hold.set_target(target_x, target_y)
+
         if self._logger_fn:
             self._logger_fn(
-                f"Moving to ({target_x:.2f}, {target_y:.2f}) at {speed} m/s"
+                f"Moving to ({target_x:.2f}, {target_y:.2f}) "
+                f"at {speed:.1f} m/s"
             )
+
+        # Use speed as the velocity clamp (max_correction)
+        move_max_correction = min(speed, self.max_correction)
+
+        start = time.time()
+        while (time.time() - start < self.waypoint_timeout and
+               self._flight_active):
+
+            # Check if we've reached the target
+            dist = ((self._position_engine.x - target_x) ** 2 +
+                    (self._position_engine.y - target_y) ** 2) ** 0.5
+            if dist < self.waypoint_threshold:
+                break
+
+            if not self.debug_mode and self._sensors.sensor_data_ready:
+                mvx, mvy = self._position_hold.calculate_corrections(
+                    self._position_engine.x, self._position_engine.y,
+                    self._position_engine.vx, self._position_engine.vy,
+                    self._sensors.height, True,
+                    max_correction=move_max_correction,
+                )
+                cf.commander.send_hover_setpoint(
+                    self.trim_forward + mvy, self.trim_right + mvx,
+                    0, self.target_height
+                )
+
+            self._log_csv_if_active()
+            time.sleep(self.control_update_rate)
+
+        # Stabilize at target
+        stab_start = time.time()
+        while (time.time() - stab_start < self.waypoint_stabilization_time and
+               self._flight_active):
+            if not self.debug_mode and self._sensors.sensor_data_ready:
+                mvx, mvy = self._position_hold.calculate_corrections(
+                    self._position_engine.x, self._position_engine.y,
+                    self._position_engine.vx, self._position_engine.vy,
+                    self._sensors.height, True,
+                )
+                cf.commander.send_hover_setpoint(
+                    self.trim_forward + mvy, self.trim_right + mvx,
+                    0, self.target_height
+                )
+            self._log_csv_if_active()
+            time.sleep(self.control_update_rate)
 
     # === Position Hold Control (Tier 3) ===
 
