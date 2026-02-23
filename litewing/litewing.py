@@ -67,12 +67,15 @@ class LiteWing:
         # Trim corrections
         self.trim_forward = defaults.TRIM_VX
         self.trim_right = defaults.TRIM_VY
+        self.trim_roll = 0.0    # Raw-mode roll trim (degrees)
+        self.trim_pitch = 0.0   # Raw-mode pitch trim (degrees)
 
         # Debug & safety
         self.debug_mode = defaults.DEBUG_MODE
         self.enable_height_sensor_safety = defaults.ENABLE_HEIGHT_SENSOR_SAFETY
         self.enable_csv_logging = defaults.ENABLE_CSV_LOGGING
         self.enable_sensor_check = True  # Check ToF / flow sensors on connect
+        self.max_thrust = 35000  # Safety cap for raw thrust (0-65535)
         self._height_sensor_min_change = defaults.HEIGHT_SENSOR_MIN_CHANGE
 
         # PID controllers (VISIBLE — learners tune these!)
@@ -642,6 +645,43 @@ class LiteWing:
             except Exception:
                 pass
         self._leds.clear()
+
+    # === Raw Control (no sensors needed) ===
+
+    def send_control(self, roll=0.0, pitch=0.0, yawrate=0.0, thrust=0):
+        """
+        Send raw flight commands directly to motors.
+
+        No sensors required! This bypasses height/position hold entirely.
+        YOU control throttle, tilt, and rotation manually.
+
+        Args:
+            roll:    Tilt left/right in degrees (-30 to +30).
+            pitch:   Tilt forward/back in degrees (-30 to +30).
+            yawrate: Spin rate in degrees/sec (-200 to +200).
+            thrust:  Motor power (0 to 65535). ~20000 = hover for light drone.
+
+        Warning:
+            Too much thrust will flip the drone! Start low (~15000) and
+            increase slowly. Use emergency_stop() or Ctrl+C if needed.
+        """
+        if self._scf is None:
+            raise RuntimeError("Not connected! Call connect() first.")
+
+        # Apply trim corrections
+        roll = float(roll) + self.trim_roll
+        pitch = float(pitch) + self.trim_pitch
+
+        # Clamp for safety
+        thrust = max(0, min(int(thrust), self.max_thrust))
+        roll = max(-30, min(30, roll))
+        pitch = max(-30, min(30, pitch))
+        yawrate = max(-200, min(200, float(yawrate)))
+
+        if not self.debug_mode:
+            self._cf_instance.commander.send_setpoint(
+                roll, pitch, yawrate, thrust
+            )
 
     def wait(self, seconds):
         """
