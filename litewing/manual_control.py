@@ -295,14 +295,45 @@ def run_manual_control(drone):
             if drone._logger_fn:
                 drone._logger_fn("Manual control: landing...")
             land_start = time.time()
-            while (time.time() - land_start < drone.landing_time and
+            current_land_height = drone.target_height
+            dt = 0.02  # 50Hz control loop
+
+            # Gradual descent: lower target height smoothly with position hold
+            while (current_land_height > 0.02 and
+                   time.time() - land_start < drone.landing_time and
                    drone._flight_active):
+                current_land_height -= drone.descent_rate * dt
+                current_land_height = max(current_land_height, 0.0)
+
+                # Keep position hold active during descent
+                if (has_pos_hold and drone._sensors.sensor_data_ready and
+                        current_land_height > 0.03):
+                    mvx, mvy = drone._position_hold.calculate_corrections(
+                        drone._position_engine.x, drone._position_engine.y,
+                        drone._position_engine.vx, drone._position_engine.vy,
+                        drone._sensors.height, True
+                    )
+                else:
+                    mvx, mvy = 0.0, 0.0
+
+                total_vx = drone.trim_forward + mvy
+                total_vy = drone.trim_right + mvx
+
+                if not drone.debug_mode:
+                    cf.commander.send_hover_setpoint(
+                        total_vx, total_vy, 0, current_land_height
+                    )
+                _log_csv_row(drone)
+                time.sleep(dt)
+
+            # Brief settle at ground level before killing motors
+            settle_start = time.time()
+            while time.time() - settle_start < 0.3 and drone._flight_active:
                 if not drone.debug_mode:
                     cf.commander.send_hover_setpoint(
                         drone.trim_forward, drone.trim_right, 0, 0
                     )
-                _log_csv_row(drone)
-                time.sleep(0.01)
+                time.sleep(0.02)
 
             if not drone.debug_mode:
                 cf.commander.send_setpoint(0, 0, 0, 0)

@@ -61,6 +61,7 @@ class LiteWing:
         self.target_height = defaults.TARGET_HEIGHT
         self.takeoff_time = defaults.TAKEOFF_TIME
         self.landing_time = defaults.LANDING_TIME
+        self.descent_rate = defaults.DESCENT_RATE
         self.hover_duration = defaults.HOVER_DURATION
         self.enable_takeoff_ramp = defaults.ENABLE_TAKEOFF_RAMP
 
@@ -608,14 +609,44 @@ class LiteWing:
             self._logger_fn("Landing...")
 
         land_start = time.time()
-        while (time.time() - land_start < self.landing_time and
+        current_land_height = self.target_height
+        dt = 0.02  # 50Hz control loop
+
+        # Gradual descent: lower target height smoothly with position hold
+        while (current_land_height > 0.02 and
+               time.time() - land_start < self.landing_time and
                self._flight_active):
+            current_land_height -= self.descent_rate * dt
+            current_land_height = max(current_land_height, 0.0)
+
+            # Keep position hold active during descent
+            if self._sensors.sensor_data_ready and current_land_height > 0.03:
+                mvx, mvy = self._position_hold.calculate_corrections(
+                    self._position_engine.x, self._position_engine.y,
+                    self._position_engine.vx, self._position_engine.vy,
+                    self._sensors.height, True
+                )
+            else:
+                mvx, mvy = 0.0, 0.0
+
+            total_vx = self.trim_forward + mvy
+            total_vy = self.trim_right + mvx
+
+            if not self.debug_mode:
+                cf.commander.send_hover_setpoint(
+                    total_vx, total_vy, 0, current_land_height
+                )
+            self._log_csv_if_active()
+            time.sleep(dt)
+
+        # Brief settle at ground level before killing motors
+        settle_start = time.time()
+        while time.time() - settle_start < 0.3 and self._flight_active:
             if not self.debug_mode:
                 cf.commander.send_hover_setpoint(
                     self.trim_forward, self.trim_right, 0, 0
                 )
-            self._log_csv_if_active()
-            time.sleep(0.01)
+            time.sleep(0.02)
 
         # Stop motors
         if not self.debug_mode:
