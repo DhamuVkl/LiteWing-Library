@@ -41,7 +41,7 @@ def run_manual_control(drone):
     drone._sensors.battery_voltage = 0.0
     drone._sensors.battery_data_ready = False
 
-    uri = f"udp://{drone._ip}"
+    uri = f"udp://{drone._ip}:{drone._port}"
 
     try:
         drone._flight_phase = "CONNECTING"

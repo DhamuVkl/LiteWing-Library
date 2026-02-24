@@ -47,6 +47,7 @@ class LiteWing:
     def __init__(self, ip=None):
         # === Connection ===
         self._ip = ip or defaults.DRONE_IP
+        self._port = defaults.DRONE_PORT
         self._scf = None
         self._flight_active = False
         self._flight_phase = "IDLE"
@@ -188,7 +189,7 @@ class LiteWing:
         from ._connection import setup_sensor_logging
 
         cflib.crtp.init_drivers()
-        uri = f"udp://{self._ip}"
+        uri = f"udp://{self._ip}:{self._port}"
 
         self._flight_phase = "CONNECTING"
         if self._logger_fn:

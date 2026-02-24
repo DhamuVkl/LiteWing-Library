@@ -18,6 +18,8 @@ class _Defaults:
     # === CONNECTION ===
     # The IP address or URI of the drone. Usually "udp://<ip>"
     DRONE_IP = "192.168.43.42"
+    # UDP port used by the drone's CRTP link
+    DRONE_PORT = 2390
 
     # === FLIGHT PARAMETERS ===
     # Target hover height in meters (0.3m = 30cm above ground)
