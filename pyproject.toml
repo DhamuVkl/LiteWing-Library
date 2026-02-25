@@ -26,9 +26,9 @@ dependencies = ["cflib @ https://github.com/Circuit-Digest/crazyflie-lib-python/
 dev = ["pytest"]
 
 [project.urls]
-Homepage = "https://github.com/DhamuVkl/LiteWing"
-Repository = "https://github.com/DhamuVkl/LiteWing"
-Issues = "https://github.com/DhamuVkl/LiteWing/issues"
+Homepage = "https://github.com/DhamuVkl/LiteWing-Library"
+Repository = "https://github.com/DhamuVkl/LiteWing-Library"
+Issues = "https://github.com/DhamuVkl/LiteWing-Library/issues"
 
 [tool.setuptools.packages.find]
 include = ["litewing*"]
