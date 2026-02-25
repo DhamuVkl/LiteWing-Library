@@ -9,6 +9,13 @@ LiteWing removes the low-level plumbing from drone programming while keeping the
 ### Quick Install (Windows)
 Double-click **`install.bat`** — it checks your Python version and installs everything automatically.
 
+### Quick Install (macOS / Linux)
+Open a terminal in the `litewing-library` folder and run:
+```bash
+chmod +x install.sh
+./install.sh
+```
+
 ### Manual Install
 ```bash
 # Navigate to the litewing-library folder
