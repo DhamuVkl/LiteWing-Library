@@ -11,7 +11,7 @@ Quick Start (Tier 1):
 
 Intermediate (Tier 2):
     drone = LiteWing("192.168.43.42")
-    drone.trim_forward = 0.02
+    drone.hover_trim_pitch = 0.02
     sensors = drone.read_sensors()
     print(sensors.battery)
 

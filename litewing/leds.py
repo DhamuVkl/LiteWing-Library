@@ -3,11 +3,18 @@ LiteWing LED Control
 =====================
 Control the NeoPixel LEDs on the drone for visual feedback.
 
-Use LEDs to signal different states:
-    drone.set_led_color(0, 255, 0)   # Green = ready
-    drone.set_led_color(255, 0, 0)   # Red = error
-    drone.blink_leds(500, 500)       # Blink every 500ms
+The drone has 4 individually addressable NeoPixel LEDs (index 0–3).
+
+Control all LEDs at once:
+    drone.set_led_color(0, 255, 0)       # All green
+    drone.blink_leds(500, 500)           # Blink all
+
+Control individual LEDs:
+    drone.set_led(0, 255, 0, 0)          # LED 0 = red
+    drone.set_led(1, 0, 255, 0)          # LED 1 = green
 """
+
+NUM_LEDS = 4  # Number of NeoPixel LEDs on the drone
 
 import time
 from .config import defaults
@@ -26,6 +33,7 @@ class LEDController:
         self._cf = None
         self._blinking = False
         self._last_color = (255, 255, 255)
+        self._pixel_colors = [(0, 0, 0)] * NUM_LEDS
 
     def attach(self, cf):
         """Attach to a Crazyflie instance."""
@@ -66,6 +74,8 @@ class LEDController:
         if success:
             time.sleep(cfg.NP_PACKET_DELAY)
             try_send_with_retries(self._cf, _np_show, logger=logger)
+        # Sync per-pixel tracking
+        self._pixel_colors = [(r, g, b)] * NUM_LEDS
         return success
 
     def blink(self, on_ms=500, off_ms=500, logger=None):
@@ -110,6 +120,41 @@ class LEDController:
             try_send_with_retries(self._cf, _np_show, logger=logger)
         return success
 
+    def set_pixel(self, index, r, g, b, logger=None):
+        """
+        Set a single LED to the specified RGB color.
+
+        Args:
+            index: LED index (0–3).
+            r: Red value (0–255).
+            g: Green value (0–255).
+            b: Blue value (0–255).
+        """
+        if not self.is_attached:
+            if logger:
+                logger("LED: Not connected to drone")
+            return False
+
+        if index < 0 or index >= NUM_LEDS:
+            if logger:
+                logger(f"LED: Invalid index {index} (must be 0–{NUM_LEDS - 1})")
+            return False
+
+        # Stop any active blinking first
+        if self._blinking:
+            self.stop_blink(logger=logger)
+
+        self._pixel_colors[index] = (r, g, b)
+
+        cfg = defaults
+        success = try_send_with_retries(
+            self._cf, _np_set_pixel, index, r, g, b, logger=logger
+        )
+        if success:
+            time.sleep(cfg.NP_PACKET_DELAY)
+            try_send_with_retries(self._cf, _np_show, logger=logger)
+        return success
+
     def clear(self, logger=None):
         """Turn off all LEDs."""
         if not self.is_attached:
@@ -120,6 +165,8 @@ class LEDController:
             time.sleep(defaults.NP_PACKET_DELAY)
 
         success = try_send_with_retries(self._cf, _np_clear, logger=logger)
+        if success:
+            self._pixel_colors = [(0, 0, 0)] * NUM_LEDS
         return success
 
 

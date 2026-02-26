@@ -46,13 +46,35 @@ drone.disconnect()
 
 ---
 
+## 🕹️ Raw Control (No Sensors Needed)
+
+| Function | What it does | When to use |
+|---|---|---|
+| `drone.send_control(roll, pitch, yawrate, thrust)` | Send raw motor commands directly | Sensorless flight, testing motors |
+
+- `roll` / `pitch`: tilt angles in degrees (−30 to +30)
+- `yawrate`: spin rate in deg/s (−200 to +200)
+- `thrust`: motor power (0–65535, ~20000 = hover)
+
+> ⚠️ Start thrust low (~15000) and increase slowly. Use `emergency_stop()` if needed.
+
+```python
+drone.connect()
+drone.send_control(thrust=15000)     # gentle lift
+time.sleep(2)
+drone.send_control(thrust=0)          # stop
+drone.disconnect()
+```
+
+---
+
 ## 🏃 Movement Commands
 
 All movement commands are **blocking** — they return when the drone arrives.
 
 | Function | What it does | When to use |
 |---|---|---|
-| `drone.pitch_forward(distance, speed)` | Pitch forward | distance in meters, speed in m/s |
+| `drone.pitch_forward(distance, speed)` | Pitch forward | push the drone forward by distance, speed in m/s |
 | `drone.pitch_backward(distance, speed)` | Pitch backward | same as forward |
 | `drone.roll_left(distance, speed)` | Roll left | same |
 | `drone.roll_right(distance, speed)` | Roll right | same |
@@ -119,6 +141,20 @@ print(f"Height:  {drone.height:.2f}m")
 print(f"Position: {drone.position}")
 ```
 
+### IMU Data
+| Property | Returns | What it tells you |
+|---|---|---|
+| `sensors.roll` | `float` (degrees) | Tilt left/right |
+| `sensors.pitch` | `float` (degrees) | Tilt forward/back |
+| `sensors.yaw` | `float` (degrees) | Rotation heading |
+| `sensors.acc_x/y/z` | `float` (g) | Acceleration on each axis |
+| `sensors.gyro_x/y/z` | `float` (deg/s) | Angular rate on each axis |
+
+```python
+sensors = drone.read_sensors()
+print(f"Roll: {sensors.roll:.1f}°  Pitch: {sensors.pitch:.1f}°  Yaw: {sensors.yaw:.1f}°")
+```
+
 ---
 
 ## 💡 LED Control
@@ -126,15 +162,21 @@ print(f"Position: {drone.position}")
 | Function | What it does | When to use |
 |---|---|---|
 | `drone.set_led_color(r, g, b)` | Set all LEDs to a color | Visual status (green=go, red=stop) |
+| `drone.set_led(index, r, g, b)` | Set one LED (0–3) to a color | Individual LED patterns |
 | `drone.blink_leds(on_ms, off_ms)` | Blink LEDs | Warnings, attention |
 | `drone.clear_leds()` | Turn off all LEDs | When done |
 
-Colors use RGB values 0–255:
+The drone has **4 LEDs** numbered 0–3. Colors use RGB values 0–255:
 ```python
-drone.set_led_color(255, 0, 0)    # Red
-drone.set_led_color(0, 255, 0)    # Green
-drone.set_led_color(0, 0, 255)    # Blue
-drone.set_led_color(255, 165, 0)  # Orange
+# All LEDs same color
+drone.set_led_color(255, 0, 0)    # All red
+drone.set_led_color(0, 255, 0)    # All green
+
+# Individual LEDs
+drone.set_led(0, 255, 0, 0)      # LED 0 = red
+drone.set_led(1, 0, 255, 0)      # LED 1 = green
+drone.set_led(2, 0, 0, 255)      # LED 2 = blue
+drone.set_led(3, 255, 255, 0)    # LED 3 = yellow
 ```
 
 > See: `level_2/01_led_control.py`
@@ -151,6 +193,26 @@ drone.set_led_color(255, 165, 0)  # Orange
 **Logged columns:** Timestamp, Position X/Y, Height, Velocity X/Y, PID Corrections
 
 > See: `level_2/04_data_logging.py`
+
+---
+
+## 📈 Live Visualization (GUI)
+
+| Function | What it shows | When to use |
+|---|---|---|
+| `live_dashboard(drone)` | 4-panel: height, attitude, velocity, battery | Full flight monitoring |
+| `live_height_plot(drone)` | Filtered + raw height | Height sensor testing |
+| `live_imu_plot(drone)` | Roll, pitch, yaw angles | IMU testing |
+| `live_position_plot(drone)` | 2D XY position trail | Position hold testing |
+
+Requires `matplotlib`. Auto-connects if needed.
+
+```python
+from litewing.gui import live_dashboard
+live_dashboard(drone)
+```
+
+> See: `level_1/with_gui/` examples
 
 ---
 
@@ -189,7 +251,9 @@ drone.set_led_color(255, 165, 0)  # Orange
 | `drone.target_height` | `0.3` | Fly higher or lower |
 | `drone.maneuver_distance` | `0.5` | Default move distance |
 | `drone.max_correction` | `0.7` | Speed cap for PID corrections |
+| `drone.descent_rate` | `0.3` | Landing descent speed (m/s) |
 | `drone.debug_mode` | `False` | Set `True` to test without motors |
+| `drone.enable_sensor_check` | `True` | Set `False` to skip ToF/flow check on `arm()` |
 
 ### PID Tuning
 | Property | Default | Effect of increasing |
@@ -206,8 +270,10 @@ drone.set_led_color(255, 165, 0)  # Orange
 ### Drift Correction
 | Property | Default | What it does |
 |---|---|---|
-| `drone.trim_forward` | `0.0` | Nudge forward to fix backward drift |
-| `drone.trim_right` | `0.0` | Nudge right to fix leftward drift |
+| `drone.hover_trim_pitch` | `0.0` | Forward/backward drift correction (hover mode). Positive = nudge forward. |
+| `drone.hover_trim_roll` | `0.0` | Left/right drift correction (hover mode). Positive = nudge right. |
+| `drone.raw_trim_roll` | `0.0` | Roll trim for raw control mode (degrees). |
+| `drone.raw_trim_pitch` | `0.0` | Pitch trim for raw control mode (degrees). |
 
 ### Firmware (Height Controller)
 | Property | Default | What it does |
@@ -222,6 +288,13 @@ drone.set_led_color(255, 165, 0)  # Orange
 |---|---|---|
 | `drone.sensitivity` | `0.2` | Speed per key press (m/s) |
 | `drone.hold_mode` | `"current"` | `"current"` = stay put, `"origin"` = snap back |
+
+### Raw Control Safety
+| Property | Default | What it does |
+|---|---|---|
+| `drone.max_thrust` | `35000` | Safety cap for `send_control()` thrust |
+| `drone.raw_trim_roll` | `0.0` | Roll trim for raw control (degrees) |
+| `drone.raw_trim_pitch` | `0.0` | Pitch trim for raw control (degrees) |
 
 ---
 

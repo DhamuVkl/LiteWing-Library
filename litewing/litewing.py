@@ -67,10 +67,10 @@ class LiteWing:
         self.enable_takeoff_ramp = defaults.ENABLE_TAKEOFF_RAMP
 
         # Trim corrections
-        self.trim_forward = defaults.TRIM_VX
-        self.trim_right = defaults.TRIM_VY
-        self.trim_roll = 0.0    # Raw-mode roll trim (degrees)
-        self.trim_pitch = 0.0   # Raw-mode pitch trim (degrees)
+        self.hover_trim_pitch = defaults.TRIM_VX
+        self.hover_trim_roll = defaults.TRIM_VY
+        self.raw_trim_roll = 0.0    # Raw-mode roll trim (degrees)
+        self.raw_trim_pitch = 0.0   # Raw-mode pitch trim (degrees)
 
         # Debug & safety
         self.debug_mode = defaults.DEBUG_MODE
@@ -545,8 +545,8 @@ class LiteWing:
                 else:
                     mvx, mvy = 0.0, 0.0
 
-                total_vx = self.trim_forward + mvy
-                total_vy = self.trim_right + mvx
+                total_vx = self.hover_trim_pitch + mvy
+                total_vy = self.hover_trim_roll + mvx
 
                 # Takeoff ramp
                 if self.enable_takeoff_ramp:
@@ -588,7 +588,7 @@ class LiteWing:
                 else:
                     mvx, mvy = 0.0, 0.0
                 cf.commander.send_hover_setpoint(
-                    self.trim_forward + mvy, self.trim_right + mvx,
+                    self.hover_trim_pitch + mvy, self.hover_trim_roll + mvx,
                     0, self.target_height
                 )
             self._log_csv_if_active()
@@ -630,8 +630,8 @@ class LiteWing:
             else:
                 mvx, mvy = 0.0, 0.0
 
-            total_vx = self.trim_forward + mvy
-            total_vy = self.trim_right + mvx
+            total_vx = self.hover_trim_pitch + mvy
+            total_vy = self.hover_trim_roll + mvx
 
             if not self.debug_mode:
                 cf.commander.send_hover_setpoint(
@@ -645,7 +645,7 @@ class LiteWing:
         while time.time() - settle_start < 0.3 and self._flight_active:
             if not self.debug_mode:
                 cf.commander.send_hover_setpoint(
-                    self.trim_forward, self.trim_right, 0, 0
+                    self.hover_trim_pitch, self.hover_trim_roll, 0, 0
                 )
             time.sleep(0.02)
 
@@ -701,8 +701,8 @@ class LiteWing:
             raise RuntimeError("Not connected! Call connect() first.")
 
         # Apply trim corrections
-        roll = float(roll) + self.trim_roll
-        pitch = float(pitch) + self.trim_pitch
+        roll = float(roll) + self.raw_trim_roll
+        pitch = float(pitch) + self.raw_trim_pitch
 
         # Clamp for safety
         thrust = max(0, min(int(thrust), self.max_thrust))
@@ -742,7 +742,7 @@ class LiteWing:
                 else:
                     mvx, mvy = 0.0, 0.0
                 cf.commander.send_hover_setpoint(
-                    self.trim_forward + mvy, self.trim_right + mvx,
+                    self.hover_trim_pitch + mvy, self.hover_trim_roll + mvx,
                     0, self.target_height
                 )
             self._log_csv_if_active()
@@ -857,7 +857,7 @@ class LiteWing:
                     max_correction=move_max_correction,
                 )
                 cf.commander.send_hover_setpoint(
-                    self.trim_forward + mvy, self.trim_right + mvx,
+                    self.hover_trim_pitch + mvy, self.hover_trim_roll + mvx,
                     0, self.target_height
                 )
 
@@ -875,7 +875,7 @@ class LiteWing:
                     self._sensors.height, True,
                 )
                 cf.commander.send_hover_setpoint(
-                    self.trim_forward + mvy, self.trim_right + mvx,
+                    self.hover_trim_pitch + mvy, self.hover_trim_roll + mvx,
                     0, self.target_height
                 )
             self._log_csv_if_active()
@@ -955,7 +955,7 @@ class LiteWing:
                     max_correction=move_max_correction,
                 )
                 cf.commander.send_hover_setpoint(
-                    self.trim_forward + mvy, self.trim_right + mvx,
+                    self.hover_trim_pitch + mvy, self.hover_trim_roll + mvx,
                     0, self.target_height
                 )
 
@@ -973,7 +973,7 @@ class LiteWing:
                     self._sensors.height, True,
                 )
                 cf.commander.send_hover_setpoint(
-                    self.trim_forward + mvy, self.trim_right + mvx,
+                    self.hover_trim_pitch + mvy, self.hover_trim_roll + mvx,
                     0, self.target_height
                 )
             self._log_csv_if_active()
@@ -1107,6 +1107,24 @@ class LiteWing:
             b: Blue (0–255).
         """
         self._leds.set_color(r, g, b, logger=self._logger_fn)
+
+    def set_led(self, index, r, g, b):
+        """
+        Set a single LED to a specific RGB color.
+
+        The drone has 4 LEDs numbered 0–3.
+
+        Args:
+            index: LED number (0–3).
+            r: Red (0–255).
+            g: Green (0–255).
+            b: Blue (0–255).
+
+        Example:
+            drone.set_led(0, 255, 0, 0)  # LED 0 = red
+            drone.set_led(1, 0, 255, 0)  # LED 1 = green
+        """
+        self._leds.set_pixel(index, r, g, b, logger=self._logger_fn)
 
     def blink_leds(self, on_ms=500, off_ms=500):
         """

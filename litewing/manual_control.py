@@ -133,8 +133,8 @@ def run_manual_control(drone):
                         )
                     else:
                         mvx, mvy = 0.0, 0.0
-                    total_vx = drone.trim_forward + mvy
-                    total_vy = drone.trim_right + mvx
+                    total_vx = drone.hover_trim_pitch + mvy
+                    total_vy = drone.hover_trim_roll + mvx
                     cf.commander.send_hover_setpoint(
                         total_vx, total_vy, 0, drone.target_height
                     )
@@ -158,8 +158,8 @@ def run_manual_control(drone):
                     )
                 else:
                     mvx, mvy = 0.0, 0.0
-                total_vx = drone.trim_forward + mvy
-                total_vy = drone.trim_right + mvx
+                total_vx = drone.hover_trim_pitch + mvy
+                total_vy = drone.hover_trim_roll + mvx
                 if not drone.debug_mode:
                     cf.commander.send_hover_setpoint(
                         total_vx, total_vy, 0, drone.target_height
@@ -279,8 +279,8 @@ def run_manual_control(drone):
                     mvx, mvy = 0.0, 0.0
 
                 # Combine feedforward (joystick) + feedback (PID)
-                total_vx = drone.trim_forward + mvy + joystick_vy
-                total_vy = drone.trim_right + mvx + joystick_vx
+                total_vx = drone.hover_trim_pitch + mvy + joystick_vy
+                total_vy = drone.hover_trim_roll + mvx + joystick_vx
 
                 if not drone.debug_mode:
                     cf.commander.send_hover_setpoint(
@@ -316,8 +316,8 @@ def run_manual_control(drone):
                 else:
                     mvx, mvy = 0.0, 0.0
 
-                total_vx = drone.trim_forward + mvy
-                total_vy = drone.trim_right + mvx
+                total_vx = drone.hover_trim_pitch + mvy
+                total_vy = drone.hover_trim_roll + mvx
 
                 if not drone.debug_mode:
                     cf.commander.send_hover_setpoint(
@@ -331,7 +331,7 @@ def run_manual_control(drone):
             while time.time() - settle_start < 0.3 and drone._flight_active:
                 if not drone.debug_mode:
                     cf.commander.send_hover_setpoint(
-                        drone.trim_forward, drone.trim_right, 0, 0
+                        drone.hover_trim_pitch, drone.hover_trim_roll, 0, 0
                     )
                 time.sleep(0.02)
 

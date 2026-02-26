@@ -170,10 +170,10 @@ class TestConfiguration:
         assert self.drone.target_height == 0.5
 
     def test_set_trim(self):
-        self.drone.trim_forward = 0.02
-        self.drone.trim_right = -0.01
-        assert self.drone.trim_forward == 0.02
-        assert self.drone.trim_right == -0.01
+        self.drone.hover_trim_pitch = 0.02
+        self.drone.hover_trim_roll = -0.01
+        assert self.drone.hover_trim_pitch == 0.02
+        assert self.drone.hover_trim_roll == -0.01
 
     def test_set_hold_mode(self):
         self.drone.hold_mode = "origin"

@@ -2,7 +2,7 @@
 
 Complete reference for every function, class, and property in the `litewing` library.
 
-> **37 public functions and properties** across 8 modules.
+> **47+ public functions and properties** across 9 modules.
 
 ---
 
@@ -28,7 +28,14 @@ with LiteWing("192.168.43.42") as drone:
     ...  # auto emergency_stop on exit
 ```
 
-### Connection & Status Properties
+### Connection
+
+| Method | Description |
+|---|---|
+| `connect()` | Connect to the drone and start reading sensor data. No motors are started. |
+| `disconnect()` | Disconnect from the drone and stop sensor logging. Safe to call even if not connected. |
+
+### Status Properties
 
 | Property | Type | Description |
 |---|---|---|
@@ -52,18 +59,26 @@ with LiteWing("192.168.43.42") as drone:
 |---|---|
 | `arm()` | Arm the drone — prepare for flight. Must be called before takeoff. |
 | `takeoff(height=None, speed=None)` | Take off to specified height (meters). Blocking. |
+| `hover(seconds)` | Hover in place for `seconds` duration while maintaining position hold. |
 | `land()` | Land the drone safely. Descends and stops motors. |
 | `emergency_stop()` | **Immediately** cuts all motors. Drone will fall! Use only in emergencies. |
-| `wait(seconds)` | Hover in place for `seconds` duration. |
 
 ### Movement Commands
 
 | Method | Description |
 |---|---|
-| `forward(distance=None, speed=0.2)` | Move forward by `distance` meters at `speed` m/s. |
-| `backward(distance=None, speed=0.2)` | Move backward by `distance` meters. |
-| `left(distance=None, speed=0.2)` | Move left by `distance` meters. |
-| `right(distance=None, speed=0.2)` | Move right by `distance` meters. |
+| `pitch_forward(distance=None, speed=0.2)` | Pitch forward by `distance` meters at `speed` m/s. |
+| `pitch_backward(distance=None, speed=0.2)` | Pitch backward by `distance` meters. |
+| `roll_left(distance=None, speed=0.2)` | Roll left by `distance` meters. |
+| `roll_right(distance=None, speed=0.2)` | Roll right by `distance` meters. |
+
+### Raw Control (No Sensors Required)
+
+| Method | Description |
+|---|---|
+| `send_control(roll=0.0, pitch=0.0, yawrate=0.0, thrust=0)` | Send raw motor commands directly. Bypasses height/position hold. `roll`/`pitch` in degrees (±30), `yawrate` in deg/s (±200), `thrust` 0–65535. |
+
+> **Warning:** Too much thrust will flip the drone! Start low (~15000) and increase slowly.
 
 ### Position Hold Control
 
@@ -102,6 +117,7 @@ with LiteWing("192.168.43.42") as drone:
 | Method | Description |
 |---|---|
 | `set_led_color(r, g, b)` | Set all LEDs to solid RGB color (0–255 each). |
+| `set_led(index, r, g, b)` | Set a single LED to RGB color. `index` = 0–3. |
 | `blink_leds(on_ms=500, off_ms=500)` | Start blinking LEDs with specified timing. |
 | `clear_leds()` | Turn off all LEDs. |
 
@@ -130,18 +146,28 @@ All properties can be set directly on the `LiteWing` instance.
 |---|---|---|
 | `target_height` | `0.3` | Hover height in meters. |
 | `takeoff_time` | `1.0` | Takeoff ramp duration (seconds). |
-| `landing_time` | `0.5` | Landing descent duration (seconds). |
+| `landing_time` | `2.0` | Landing descent timeout (seconds). |
+| `descent_rate` | `0.3` | Landing descent speed in m/s. |
 | `hover_duration` | `20.0` | Default hover time (seconds). |
 | `enable_takeoff_ramp` | `False` | Smooth altitude ramp during takeoff. |
 | `debug_mode` | `False` | If `True`, disables motors (sensors still work). |
 | `enable_csv_logging` | `False` | Auto-create CSV log files during flight. |
+| `enable_sensor_check` | `True` | Check ToF/flow sensors on `arm()`. Set `False` to skip. |
 
 ### Trim Corrections
 
 | Property | Default | Description |
 |---|---|---|
-| `trim_forward` | `0.0` | Forward/backward drift correction. Positive = nudge forward. |
-| `trim_right` | `0.0` | Left/right drift correction. Positive = nudge right. |
+| `hover_trim_pitch` | `0.0` | Forward/backward drift correction (hover mode). Positive = nudge forward. |
+| `hover_trim_roll` | `0.0` | Left/right drift correction (hover mode). Positive = nudge right. |
+| `raw_trim_roll` | `0.0` | Roll trim for raw control mode (degrees). |
+| `raw_trim_pitch` | `0.0` | Pitch trim for raw control mode (degrees). |
+
+### Raw Control Safety
+
+| Property | Default | Description |
+|---|---|---|
+| `max_thrust` | `35000` | Safety cap for `send_control()` thrust (0–65535). |
 
 ### PID Controllers
 
@@ -219,6 +245,15 @@ Returned by `drone.read_sensors()`. Read-only snapshot of all sensor values.
 | `battery` | `float` | Battery voltage (volts). |
 | `delta_x` | `int` | Raw optical flow delta X. |
 | `delta_y` | `int` | Raw optical flow delta Y. |
+| `roll` | `float` | Roll angle (degrees). |
+| `pitch` | `float` | Pitch angle (degrees). |
+| `yaw` | `float` | Yaw angle (degrees). |
+| `acc_x` | `float` | Accelerometer X (g). |
+| `acc_y` | `float` | Accelerometer Y (g). |
+| `acc_z` | `float` | Accelerometer Z (g). |
+| `gyro_x` | `float` | Gyroscope X (deg/s). |
+| `gyro_y` | `float` | Gyroscope Y (deg/s). |
+| `gyro_z` | `float` | Gyroscope Z (deg/s). |
 
 ---
 
@@ -259,6 +294,7 @@ Controls NeoPixel LEDs on the drone.
 | Method | Description |
 |---|---|
 | `set_color(r, g, b)` | Set all LEDs to RGB color. |
+| `set_pixel(index, r, g, b)` | Set a single LED by index (0–3) to RGB color. |
 | `blink(on_ms, off_ms)` | Start blinking with timing. |
 | `stop_blink()` | Stop blink, restore last color. |
 | `clear()` | Turn off all LEDs. |
@@ -292,6 +328,26 @@ Records flight data to CSV files.
 | `Velocity Y (m/s)` | m/s | Y velocity from optical flow. |
 | `Correction VX` | — | PID correction applied to X. |
 | `Correction VY` | — | PID correction applied to Y. |
+
+---
+
+## `gui` — Live Sensor Visualization (`gui.py`)
+
+Built-in matplotlib dashboards for real-time sensor plotting.
+
+```python
+from litewing.gui import live_dashboard
+live_dashboard(drone)
+```
+
+| Function | Description |
+|---|---|
+| `live_dashboard(drone, max_points=200, update_ms=100)` | Full 4-panel dashboard: height, attitude, velocity, battery. |
+| `live_height_plot(drone, max_points=200, update_ms=100)` | Single plot: Kalman-filtered + raw ToF height. |
+| `live_imu_plot(drone, max_points=200, update_ms=100)` | Single plot: roll, pitch, yaw attitude angles. |
+| `live_position_plot(drone, max_points=500, update_ms=100)` | 2D XY position trail from optical flow dead reckoning. |
+
+All functions auto-connect the drone if not already connected. Requires `matplotlib`.
 
 ---
 
