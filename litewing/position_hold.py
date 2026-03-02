@@ -29,9 +29,10 @@ class PositionHoldController:
         Velocity PID → dampens the correction to prevent oscillation
     """
 
-    def __init__(self, position_pid_config, velocity_pid_config):
+    def __init__(self, position_pid_config, velocity_pid_config, cfg=None):
         self.position_pid = position_pid_config
         self.velocity_pid = velocity_pid_config
+        self.cfg = cfg
         self._pos_state = _PIDState()
         self._vel_state = _PIDState()
         # Target position (where the drone should be)
@@ -62,7 +63,8 @@ class PositionHoldController:
                               max_correction=None,
                               approach_damping_distance=0.1,
                               approach_damping_velocity=0.05,
-                              approach_damping_factor=0.8):
+                              approach_damping_factor=0.8,
+                              cfg=None):
         """
         Calculate control corrections using cascaded PID.
 
@@ -84,10 +86,13 @@ class PositionHoldController:
             self.correction_vy = 0.0
             return 0.0, 0.0
 
+        if cfg is None:
+            cfg = self.cfg if self.cfg is not None else defaults
+
         if dt is None:
-            dt = defaults.CONTROL_UPDATE_RATE
+            dt = cfg.CONTROL_UPDATE_RATE
         if max_correction is None:
-            max_correction = defaults.MAX_CORRECTION
+            max_correction = cfg.MAX_CORRECTION
 
         # Position error (negative = correct toward target)
         pos_error_x = -(current_x - self.target_x)

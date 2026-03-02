@@ -33,6 +33,35 @@ from . import _flight_engine
 from . import manual_control as _manual_control
 
 
+class _PositionConfigProxy:
+    """Provides a config.defaults-compatible interface mapping to LiteWing instance properties."""
+    def __init__(self, drone):
+        self._drone = drone
+    
+    @property
+    def SENSOR_PERIOD_MS(self): return self._drone.sensor_update_rate
+    @property
+    def USE_HEIGHT_SCALING(self): return self._drone.use_height_scaling
+    @property
+    def OPTICAL_FLOW_SCALE(self): return self._drone.optical_flow_scale
+    @property
+    def VELOCITY_SMOOTHING_ALPHA(self): return self._drone.velocity_smoothing
+    @property
+    def VELOCITY_THRESHOLD(self): return self._drone.velocity_threshold
+    @property
+    def DRIFT_COMPENSATION_RATE(self): return self._drone.drift_compensation_rate
+    @property
+    def MAX_POSITION_ERROR(self): return self._drone.max_position_error
+    @property
+    def PERIODIC_RESET_INTERVAL(self): return self._drone.position_reset_interval
+    @property
+    def CONTROL_UPDATE_RATE(self): return self._drone.control_update_rate
+    @property
+    def MAX_CORRECTION(self): return self._drone.max_correction
+    @property
+    def DEG_TO_RAD(self): return defaults.DEG_TO_RAD
+
+
 class LiteWing:
     """
     Main drone controller — your "remote control."
@@ -132,10 +161,11 @@ class LiteWing:
         self.maneuver_distance = defaults.MANEUVER_DISTANCE
 
         # === Internal state (hidden from learners) ===
+        self._position_cfg_proxy = _PositionConfigProxy(self)
         self._sensors = _SensorState()
-        self._position_engine = PositionEngine()
+        self._position_engine = PositionEngine(cfg=self._position_cfg_proxy)
         self._position_hold = PositionHoldController(
-            self.position_pid, self.velocity_pid
+            self.position_pid, self.velocity_pid, cfg=self._position_cfg_proxy
         )
         self._leds = LEDController()
         self._flight_logger = FlightLogger()

@@ -18,7 +18,8 @@ class PositionEngine:
     good enough for short-distance position hold and maneuvers.
     """
 
-    def __init__(self):
+    def __init__(self, cfg=None):
+        self.cfg = cfg
         # Current estimated position (meters from origin)
         self.x = 0.0
         self.y = 0.0
@@ -62,7 +63,7 @@ class PositionEngine:
             Velocity in m/s.
         """
         if cfg is None:
-            cfg = defaults
+            cfg = self.cfg if self.cfg is not None else defaults
         if altitude <= 0:
             return 0.0
 
@@ -77,7 +78,7 @@ class PositionEngine:
     def _smooth_velocity(self, new_velocity, history, cfg=None):
         """Simple 2-point smoothing filter."""
         if cfg is None:
-            cfg = defaults
+            cfg = self.cfg if self.cfg is not None else defaults
         history[1] = history[0]
         history[0] = new_velocity
         alpha = cfg.VELOCITY_SMOOTHING_ALPHA
@@ -89,7 +90,7 @@ class PositionEngine:
     def _integrate(self, vx, vy, dt, cfg=None):
         """Dead reckoning: integrate velocity into position."""
         if cfg is None:
-            cfg = defaults
+            cfg = self.cfg if self.cfg is not None else defaults
         if dt <= 0 or dt > 0.1:
             return
 
@@ -109,7 +110,7 @@ class PositionEngine:
     def periodic_reset_check(self, cfg=None):
         """Reset position if the periodic interval has elapsed."""
         if cfg is None:
-            cfg = defaults
+            cfg = self.cfg if self.cfg is not None else defaults
         current_time = time.time()
         if current_time - self._last_reset_time >= cfg.PERIODIC_RESET_INTERVAL:
             self.x = 0.0
@@ -130,7 +131,7 @@ class PositionEngine:
             cfg: Config defaults override.
         """
         if cfg is None:
-            cfg = defaults
+            cfg = self.cfg if self.cfg is not None else defaults
 
         self.delta_x = delta_x
         self.delta_y = delta_y
