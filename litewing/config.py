@@ -136,6 +136,12 @@ class _Defaults:
     NP_PACKET_DELAY = 0.02
     NP_LINK_SETUP_DELAY = 0.12
 
+    # === APPROACH DAMPING ===
+    # Constants for reducing position hold correction near target to prevent overshoot
+    APPROACH_DAMPING_DISTANCE = 0.1     # Distance threshold in meters
+    APPROACH_DAMPING_VELOCITY = 0.05    # Velocity threshold in m/s
+    APPROACH_DAMPING_FACTOR = 0.8       # Correction reduction factor (0.8 = 20% reduction)
+
     # === INTERNAL CONSTANTS ===
     import math
     DEG_TO_RAD = math.pi / 180.0

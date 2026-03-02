@@ -102,6 +102,11 @@ class LiteWing:
         self.use_height_scaling = defaults.USE_HEIGHT_SCALING
         self.velocity_smoothing = defaults.VELOCITY_SMOOTHING_ALPHA
 
+        # Approach damping settings
+        self.approach_damping_distance = defaults.APPROACH_DAMPING_DISTANCE
+        self.approach_damping_velocity = defaults.APPROACH_DAMPING_VELOCITY
+        self.approach_damping_factor = defaults.APPROACH_DAMPING_FACTOR
+
         # Joystick / manual control
         self.sensitivity = defaults.JOYSTICK_SENSITIVITY
         self.hold_mode = defaults.JOYSTICK_HOLD_MODE

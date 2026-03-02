@@ -59,7 +59,10 @@ class PositionHoldController:
 
     def calculate_corrections(self, current_x, current_y, current_vx, current_vy,
                               current_height, sensor_ready, dt=None,
-                              max_correction=None):
+                              max_correction=None,
+                              approach_damping_distance=0.1,
+                              approach_damping_velocity=0.05,
+                              approach_damping_factor=0.8):
         """
         Calculate control corrections using cascaded PID.
 
@@ -111,11 +114,11 @@ class PositionHoldController:
         # Approach damping — reduce corrections when close to target
         distance = ((current_x - self.target_x) ** 2 +
                      (current_y - self.target_y) ** 2) ** 0.5
-        if distance < 0.1:
+        if distance < approach_damping_distance:
             vel_magnitude = (current_vx ** 2 + current_vy ** 2) ** 0.5
-            if vel_magnitude > 0.05:
-                total_vx *= 0.8
-                total_vy *= 0.8
+            if vel_magnitude > approach_damping_velocity:
+                total_vx *= approach_damping_factor
+                total_vy *= approach_damping_factor
 
         # Clamp corrections
         total_vx = max(-max_correction, min(max_correction, total_vx))
