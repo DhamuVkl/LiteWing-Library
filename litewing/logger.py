@@ -87,6 +87,7 @@ class FlightLogger:
             "Target Height (m)",
             "Cmd VX",
             "Cmd VY",
+            "Cmd Thrust",
         ])
 
         if logger:
@@ -97,7 +98,7 @@ class FlightLogger:
                 battery=0.0, roll=0.0, pitch=0.0, yaw=0.0,
                 gyro_x=0.0, gyro_y=0.0, gyro_z=0.0,
                 flight_phase="", target_height=0.0,
-                cmd_vx=0.0, cmd_vy=0.0,
+                cmd_vx=0.0, cmd_vy=0.0, cmd_thrust=0.0,
                 start_time=None):
         """
         Write one row of flight data.
@@ -133,6 +134,7 @@ class FlightLogger:
             f"{target_height:.3f}",
             f"{cmd_vx:.6f}",
             f"{cmd_vy:.6f}",
+            f"{cmd_thrust:.2f}",
         ])
 
     def stop(self, logger=None):

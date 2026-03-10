@@ -5,9 +5,11 @@ litewing/__init__.py
 litewing/_connection.py
 litewing/_crtp.py
 litewing/_flight_engine.py
+litewing/_plot_runner.py
 litewing/_position.py
 litewing/_safety.py
 litewing/config.py
+litewing/gui.py
 litewing/leds.py
 litewing/litewing.py
 litewing/logger.py

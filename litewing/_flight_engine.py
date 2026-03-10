@@ -58,7 +58,7 @@ def run_flight_sequence(drone, maneuver_fn=None):
 
             # Setup sensor logging
             drone._flight_phase = "SETUP"
-            log_motion, log_battery = setup_sensor_logging(
+            log_motion, log_battery, log_imu, log_thrust = setup_sensor_logging(
                 cf,
                 motion_callback=drone._motion_callback,
                 battery_callback=drone._battery_callback,
@@ -276,7 +276,7 @@ def run_flight_sequence(drone, maneuver_fn=None):
             pass
     finally:
         drone._flight_logger.stop(logger=drone._logger_fn)
-        stop_logging_configs(log_motion, log_battery)
+        stop_logging_configs(log_motion, log_battery, log_imu, log_thrust)
         drone._leds.detach()
         drone._flight_active = False
         drone._scf = None
@@ -465,4 +465,5 @@ def _log_csv_row(drone):
         gyro_z=drone._sensors.gyro_z,
         flight_phase=drone._flight_phase,
         target_height=drone._cmd_height,
+        cmd_thrust=drone._sensors.thrust,
     )

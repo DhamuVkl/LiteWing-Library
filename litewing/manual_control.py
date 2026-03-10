@@ -61,7 +61,7 @@ def run_manual_control(drone):
             drone._leds.attach(cf)
 
             # Setup logging
-            log_motion, log_battery, log_imu = setup_sensor_logging(
+            log_motion, log_battery, log_imu, log_thrust = setup_sensor_logging(
                 cf,
                 motion_callback=drone._motion_callback,
                 battery_callback=drone._battery_callback,
@@ -353,7 +353,7 @@ def run_manual_control(drone):
             pass
     finally:
         drone._flight_logger.stop(logger=drone._logger_fn)
-        stop_logging_configs(log_motion, log_battery, log_imu)
+        stop_logging_configs(log_motion, log_battery, log_imu, log_thrust)
         drone._leds.detach()
         drone._flight_active = False
         drone._manual_active = False
@@ -371,4 +371,14 @@ def _log_csv_row(drone):
         drone._position_engine.vy,
         drone._position_hold.correction_vx,
         drone._position_hold.correction_vy,
+        battery=drone._sensors.battery_voltage,
+        roll=drone._sensors.roll,
+        pitch=drone._sensors.pitch,
+        yaw=drone._sensors.yaw,
+        gyro_x=drone._sensors.gyro_x,
+        gyro_y=drone._sensors.gyro_y,
+        gyro_z=drone._sensors.gyro_z,
+        flight_phase=drone._flight_phase,
+        target_height=drone._cmd_height,
+        cmd_thrust=drone._sensors.thrust,
     )

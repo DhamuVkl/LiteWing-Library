@@ -4,27 +4,22 @@ Version: 0.1.0
 Summary: Beginner-friendly Python library for LiteWing drone control
 Author: DhamuVkl
 License: MIT
-Project-URL: Homepage, https://github.com/DhamuVkl/LiteWing
-Project-URL: Repository, https://github.com/DhamuVkl/LiteWing
-Project-URL: Issues, https://github.com/DhamuVkl/LiteWing/issues
+Project-URL: Homepage, https://github.com/DhamuVkl/LiteWing-Library
+Project-URL: Repository, https://github.com/DhamuVkl/LiteWing-Library
+Project-URL: Issues, https://github.com/DhamuVkl/LiteWing-Library/issues
 Keywords: drone,crazyflie,litewing,education,robotics
 Classifier: Development Status :: 3 - Alpha
 Classifier: Intended Audience :: Education
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Python :: 3.8
-Classifier: Programming Language :: Python :: 3.9
-Classifier: Programming Language :: Python :: 3.10
 Classifier: Programming Language :: Python :: 3.11
-Classifier: Programming Language :: Python :: 3.12
-Classifier: Programming Language :: Python :: 3.13
-Classifier: Programming Language :: Python :: 3.14
 Classifier: Topic :: Scientific/Engineering
 Classifier: Topic :: Education
-Requires-Python: >=3.8
+Requires-Python: <3.12,>=3.11
 Description-Content-Type: text/markdown
 License-File: LICENSE
-Requires-Dist: cflib
+Requires-Dist: cflib @ https://github.com/Circuit-Digest/crazyflie-lib-python/archive/refs/heads/master.zip
+Requires-Dist: matplotlib
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Dynamic: license-file
@@ -37,21 +32,49 @@ LiteWing removes the low-level plumbing from drone programming while keeping the
 
 ## Installation
 
-```bash
-# From the project directory
-pip install -e .
+### Quick Install (Windows)
+Double-click **`install.bat`** — it checks your Python version and installs everything automatically.
 
-# Or install from source
-pip install .
+### Quick Install (macOS / Linux)
+Open a terminal in the `litewing-library` folder and run:
+```bash
+chmod +x install.sh
+./install.sh
+```
+
+### Manual Install
+```bash
+# Navigate to the litewing-library folder
+cd litewing-library
+
+# Install in development mode (recommended for students)
+pip install -e .
 ```
 
 ### Requirements
-- Python 3.8+
+- **Python 3.11** (required — other versions will not work)
+  - Download: [Python 3.11.9](https://www.python.org/downloads/release/python-3119/)
+  - ⚠️ Check **"Add Python to PATH"** during installation!
 - [cflib](https://github.com/bitcraze/crazyflie-lib-python) (installed automatically)
+- [matplotlib](https://matplotlib.org/) (installed automatically)
 
 ## Quick Start
 
-### Tier 1 — Beginner: First Flight
+### Level 1 — Read Sensors (No Flying!)
+
+```python
+from litewing import LiteWing
+import time
+
+drone = LiteWing("192.168.43.42")
+drone.connect()          # Connect, no motors!
+time.sleep(2)            # Wait for sensor data
+print(f"Battery: {drone.battery:.2f}V")
+print(f"Height:  {drone.height:.3f}m")
+drone.disconnect()
+```
+
+### Level 2 — First Flight
 
 ```python
 from litewing import LiteWing
@@ -63,20 +86,7 @@ drone.arm()
 drone.fly(hover_duration=10)   # Takeoff, hover 10s, land
 ```
 
-### Tier 2 — Intermediate: Sensors & Manual Control
-
-```python
-from litewing import LiteWing
-
-drone = LiteWing("192.168.43.42")
-drone.trim_forward = 0.02      # Correct drift
-drone.hold_mode = "current"    # Hold at current position on key release
-
-drone.arm()
-drone.start_manual_control()   # WASD keyboard control
-```
-
-### Tier 3 — Advanced: PID Tuning & Waypoints
+### Level 3 — PID Tuning & Waypoints
 
 ```python
 from litewing import LiteWing
@@ -92,7 +102,7 @@ square = [(0.5, 0), (0.5, -0.5), (0, -0.5), (0, 0)]
 
 def mission(drone_ref, cf, has_pos_hold):
     from litewing._flight_engine import run_waypoint_maneuver
-    drone_ref.set_led_color(0, 255, 0)   # Green = navigating
+    drone_ref.set_led_color(0, 255, 0)
     run_waypoint_maneuver(drone_ref, cf, has_pos_hold, square)
     drone_ref.clear_leds()
 
@@ -128,7 +138,7 @@ litewing-library/
 │   ├── __init__.py         # Public exports: LiteWing, SensorData, PIDConfig
 │   ├── litewing.py         # Main LiteWing class
 │   ├── config.py           # All default constants
-│   ├── pid.py              # PID controller (public)
+│   ├── pid.py              # PID controller
 │   ├── sensors.py          # SensorData snapshot class
 │   ├── position_hold.py    # Position hold controller
 │   ├── manual_control.py   # Joystick/keyboard control
@@ -139,10 +149,10 @@ litewing-library/
 │   ├── _position.py        # Internal: dead reckoning
 │   ├── _flight_engine.py   # Internal: flight state machine
 │   └── _safety.py          # Internal: link/battery checks
-├── examples/               # Example scripts
-│   ├── tier1_first_flight.py
-│   ├── tier2_sensors_and_control.py
-│   └── tier3_pid_and_waypoints.py
+├── examples/               # Example scripts (by level)
+│   ├── level_1/            # Sensor reading — no flying
+│   ├── level_2/            # Basic flight control
+│   └── level_3/            # PID tuning, waypoints, advanced
 └── tests/                  # Unit tests
     └── test_litewing.py
 ```

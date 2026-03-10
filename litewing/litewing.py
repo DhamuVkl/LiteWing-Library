@@ -280,7 +280,7 @@ class LiteWing:
         self._leds.attach(cf)
 
         # Start sensor logging
-        self._log_motion, self._log_battery, self._log_imu = setup_sensor_logging(
+        self._log_motion, self._log_battery, self._log_imu, self._log_thrust = setup_sensor_logging(
             cf,
             motion_callback=self._motion_callback,
             battery_callback=self._battery_callback,
@@ -337,7 +337,8 @@ class LiteWing:
             log_m = getattr(self, '_log_motion', None)
             log_b = getattr(self, '_log_battery', None)
             log_i = getattr(self, '_log_imu', None)
-            stop_logging_configs(log_m, log_b, log_i)
+            log_t = getattr(self, '_log_thrust', None)
+            stop_logging_configs(log_m, log_b, log_i, log_t)
         except Exception:
             pass
         try:
@@ -844,6 +845,7 @@ class LiteWing:
                 target_height=self._cmd_height,
                 cmd_vx=self.hover_trim_pitch + corr_vx,
                 cmd_vy=self.hover_trim_roll + corr_vy,
+                cmd_thrust=self._sensors.thrust,
             )
 
     # === Movement Commands (Tier 1) ===
@@ -1348,12 +1350,13 @@ class LiteWing:
 
     def _imu_callback(self, timestamp, data, logconf):
         """Internal: called when new IMU data arrives."""
-        self._sensors.roll = data.get("stabilizer.roll", 0.0)
-        self._sensors.pitch = data.get("stabilizer.pitch", 0.0)
-        self._sensors.yaw = data.get("stabilizer.yaw", 0.0)
-        self._sensors.gyro_x = data.get("gyro.x", 0.0)
-        self._sensors.gyro_y = data.get("gyro.y", 0.0)
-        self._sensors.gyro_z = data.get("gyro.z", 0.0)
+        self._sensors.roll = data.get("stabilizer.roll", self._sensors.roll)
+        self._sensors.pitch = data.get("stabilizer.pitch", self._sensors.pitch)
+        self._sensors.yaw = data.get("stabilizer.yaw", self._sensors.yaw)
+        self._sensors.gyro_x = data.get("gyro.x", self._sensors.gyro_x)
+        self._sensors.gyro_y = data.get("gyro.y", self._sensors.gyro_y)
+        self._sensors.gyro_z = data.get("gyro.z", self._sensors.gyro_z)
+        self._sensors.thrust = data.get("stabilizer.thrust", self._sensors.thrust)
 
     def set_logger(self, fn):
         """
