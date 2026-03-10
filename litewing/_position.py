@@ -76,9 +76,16 @@ class PositionEngine:
             return delta_value * cfg.OPTICAL_FLOW_SCALE * dt
 
     def _smooth_velocity(self, new_velocity, history, cfg=None):
-        """Simple 2-point smoothing filter."""
+        """Simple 2-point smoothing filter with outlier rejection."""
         if cfg is None:
             cfg = self.cfg if self.cfg is not None else defaults
+
+        # Outlier Filter: restrict massive jumps in a single frame.
+        # A lightweight drone cannot change velocity by >5.0 m/s in ~20 milliseconds.
+        # If the sensor reports a massive spike, we ignore it and reuse the last valid velocity.
+        if abs(new_velocity - history[0]) > 5.0:
+            new_velocity = history[0]
+
         history[1] = history[0]
         history[0] = new_velocity
         alpha = cfg.VELOCITY_SMOOTHING_ALPHA
