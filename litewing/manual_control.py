@@ -233,17 +233,19 @@ def run_manual_control(drone):
                     dt = 0.1
 
                 # Get joystick input from key states
-                joystick_vx = 0.0
-                joystick_vy = 0.0
+                # Drone body frame: +X = forward (pitch), +Y = left (roll)
+                # send_hover_setpoint(vx, vy): vx → pitch, vy → roll
+                joystick_vx = 0.0  # forward / backward
+                joystick_vy = 0.0  # left / right
 
                 if drone._manual_keys.get("w", False):
-                    joystick_vy += drone.sensitivity
+                    joystick_vx += drone.sensitivity   # W = forward (+X)
                 if drone._manual_keys.get("s", False):
-                    joystick_vy -= drone.sensitivity
+                    joystick_vx -= drone.sensitivity   # S = backward (-X)
                 if drone._manual_keys.get("a", False):
-                    joystick_vx += drone.sensitivity
+                    joystick_vy += drone.sensitivity   # A = left (+Y)
                 if drone._manual_keys.get("d", False):
-                    joystick_vx -= drone.sensitivity
+                    joystick_vy -= drone.sensitivity   # D = right (-Y)
 
                 # Update target position based on hold mode
                 if has_pos_hold and drone._sensors.sensor_data_ready:
