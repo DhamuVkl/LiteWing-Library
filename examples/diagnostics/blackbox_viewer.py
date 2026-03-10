@@ -292,6 +292,10 @@ body {
 <div class="timeline">
     <button id="btn-play" title="Play/Pause">▶</button>
     <select class="speed-select" id="speed-select">
+        <option value="0.005">0.005×</option>
+        <option value="0.025">0.025×</option>
+        <option value="0.05">0.05×</option>
+        <option value="0.1">0.1×</option>
         <option value="0.25">0.25×</option>
         <option value="0.5">0.5×</option>
         <option value="1" selected>1×</option>
@@ -300,6 +304,18 @@ body {
     </select>
     <input type="range" id="timeline-slider" min="0" max="1000" value="0" step="1">
     <div class="time-display" id="time-display">0.000s / 0.000s</div>
+    <label style="font-size:11px;color:#6c7086;">Step:
+        <select class="speed-select" id="step-select">
+            <option value="1" selected>1pt</option>
+            <option value="2">2pt</option>
+            <option value="3">3pt</option>
+            <option value="5">5pt</option>
+            <option value="10">10pt</option>
+            <option value="25">25pt</option>
+            <option value="50">50pt</option>
+            <option value="100">100pt</option>
+        </select>
+    </label>
 </div>
 
 <script>
@@ -314,6 +330,9 @@ let currentIdx = 0;
 let playing = false;
 let playSpeed = 1;
 let lastFrameTime = 0;
+let lastChartUpdate = 0;  // throttle Plotly updates
+const CHART_UPDATE_INTERVAL = 100; // ms between chart cursor updates
+const ATTITUDE_AMPLIFY = 2.0; // amplify roll/pitch/yaw for visual clarity
 
 // ═══════════════════════════════════════════════════════════════
 //  STATS
@@ -453,30 +472,30 @@ function createDroneModel() {
     const motorMat = new THREE.MeshPhongMaterial({ color: 0xf9e2af, emissive: 0xf9e2af, emissiveIntensity: 0.4 });
     const noseMat = new THREE.MeshPhongMaterial({ color: 0xa6e3a1, emissive: 0xa6e3a1, emissiveIntensity: 0.5 });
 
-    // Center body
-    group.add(new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.012, 0.04), bodyMat));
+    // Center body (2x larger for visibility)
+    group.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.08), bodyMat));
 
-    // Arms
-    const armLen = 0.1, armW = 0.008;
+    // Arms (2x larger)
+    const armLen = 0.2, armW = 0.016;
     for (const angle of [Math.PI / 4, -Math.PI / 4, 3 * Math.PI / 4, -3 * Math.PI / 4]) {
         const arm = new THREE.Mesh(new THREE.BoxGeometry(armLen, 0.005, armW), armMat);
         arm.rotation.y = angle;
         group.add(arm);
 
-        // Motor at arm tip
-        const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.008, 8), motorMat);
+        // Motor at arm tip (2x larger)
+        const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.014, 8), motorMat);
         motor.position.set(
             Math.cos(angle) * armLen / 2,
-            0.006,
+            0.012,
             -Math.sin(angle) * armLen / 2
         );
         group.add(motor);
     }
 
     // Nose direction indicator (forward = -Z in model space)
-    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.03, 4), noseMat);
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.06, 4), noseMat);
     nose.rotation.x = Math.PI / 2;
-    nose.position.z = -0.035;
+    nose.position.z = -0.07;
     group.add(nose);
 
     return group;
@@ -568,12 +587,12 @@ function updateAll(idx) {
     const z3d = -D.pos_x[idx] * SCALE;
     droneModel.position.set(x3d, y3d, z3d);
 
-    // Apply attitude (convert degrees to radians)
+    // Apply attitude — AMPLIFIED for visual clarity (real angles are only ±5°)
     droneModel.rotation.set(0, 0, 0);
     droneModel.rotation.order = 'YXZ';
-    droneModel.rotation.x = THREE.MathUtils.degToRad(-D.pitch[idx]); // pitch = tilt forward
-    droneModel.rotation.z = THREE.MathUtils.degToRad(-D.roll[idx]);  // roll = tilt sideways
-    droneModel.rotation.y = THREE.MathUtils.degToRad(-D.yaw[idx]);   // yaw = rotate
+    droneModel.rotation.x = THREE.MathUtils.degToRad(-D.pitch[idx] * ATTITUDE_AMPLIFY);
+    droneModel.rotation.z = THREE.MathUtils.degToRad(-D.roll[idx] * ATTITUDE_AMPLIFY);
+    droneModel.rotation.y = THREE.MathUtils.degToRad(-D.yaw[idx]);  // yaw at real scale
 
     // Drop line
     const dp = dropLine.geometry.attributes.position;
@@ -582,12 +601,16 @@ function updateAll(idx) {
     dp.needsUpdate = true;
     dropLine.computeLineDistances();
 
-    // ── Update Plotly cursors ──
-    const shape = [cursorShape(t)];
-    Plotly.relayout('chart-height', { shapes: shape });
-    Plotly.relayout('chart-attitude', { shapes: shape });
-    Plotly.relayout('chart-velocity', { shapes: shape });
-    Plotly.relayout('chart-battery', { shapes: shape });
+    // ── Update Plotly cursors (THROTTLED to avoid frame lag) ──
+    const now = performance.now();
+    if (now - lastChartUpdate > CHART_UPDATE_INTERVAL) {
+        lastChartUpdate = now;
+        const shape = [cursorShape(t)];
+        Plotly.relayout('chart-height', { shapes: shape });
+        Plotly.relayout('chart-attitude', { shapes: shape });
+        Plotly.relayout('chart-velocity', { shapes: shape });
+        Plotly.relayout('chart-battery', { shapes: shape });
+    }
 
     // ── Update info display ──
     document.getElementById('att-roll').textContent = D.roll[idx].toFixed(1) + '°';
@@ -628,10 +651,15 @@ speedSelect.addEventListener('change', () => {
 });
 
 // Keyboard shortcuts
+let stepSize = 1;
+document.getElementById('step-select').addEventListener('change', (e) => {
+    stepSize = parseInt(e.target.value);
+});
+
 document.addEventListener('keydown', (e) => {
     if (e.code === 'Space') { e.preventDefault(); btnPlay.click(); }
-    else if (e.code === 'ArrowLeft') updateAll(Math.max(0, currentIdx - 10));
-    else if (e.code === 'ArrowRight') updateAll(Math.min(N - 1, currentIdx + 10));
+    else if (e.code === 'ArrowLeft') { e.preventDefault(); updateAll(Math.max(0, currentIdx - stepSize)); }
+    else if (e.code === 'ArrowRight') { e.preventDefault(); updateAll(Math.min(N - 1, currentIdx + stepSize)); }
     else if (e.code === 'Home') updateAll(0);
     else if (e.code === 'End') updateAll(N - 1);
 });
@@ -657,10 +685,11 @@ window.addEventListener('resize', () => {
 function animate(timestamp) {
     requestAnimationFrame(animate);
 
-    // Playback
+    // Playback — cap dt to avoid jumps from slow frames
     if (playing) {
-        const dt = (timestamp - lastFrameTime) / 1000;
+        const rawDt = (timestamp - lastFrameTime) / 1000;
         lastFrameTime = timestamp;
+        const dt = Math.min(rawDt, 0.05);  // cap at 50ms to prevent frame-lag speed jumps
         const currentTime = D.time[currentIdx] + dt * playSpeed;
         if (currentTime >= maxTime) {
             playing = false;
