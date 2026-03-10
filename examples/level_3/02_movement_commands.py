@@ -1,5 +1,5 @@
 """
-Level 2 — Movement Commands
+Level 3 — Movement Commands
 =============================
 Fly a square pattern using movement commands.
 
