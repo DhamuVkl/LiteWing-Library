@@ -118,7 +118,7 @@ echo   !DIM!Downloads cflib + matplotlib = may take a few minutes!R!
 echo.
 
 !PY311_CMD! -m pip install --upgrade pip >nul 2>&1
-!PY311_CMD! -m pip install -e .
+!PY311_CMD! -m pip install .
 
 if errorlevel 1 (
     echo.
@@ -129,7 +129,7 @@ if errorlevel 1 (
     echo     - System date/time is wrong - causes SSL errors
     echo       !YEL!Fix: Right-click clock, Adjust date/time, Set time automatically!R!
     echo.
-    echo   Try manually: !PY311_CMD! -m pip install -e . --verbose
+    echo   Try manually: !PY311_CMD! -m pip install . --verbose
     echo.
     pause
     exit /b 1

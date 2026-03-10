@@ -166,7 +166,7 @@ if ! $PY311_CMD -m pip --version &>/dev/null; then
 fi
 
 $PY311_CMD -m pip install --upgrade pip 2>/dev/null
-$PY311_CMD -m pip install -e "$SCRIPT_DIR"
+$PY311_CMD -m pip install "$SCRIPT_DIR"
 
 if [ $? -ne 0 ]; then
     echo ""
@@ -177,7 +177,7 @@ if [ $? -ne 0 ]; then
     echo -e "    - System date/time is wrong - causes SSL errors"
     echo -e "      ${YEL}Fix your system date/time and try again${RST}"
     echo ""
-    echo "  Try manually: $PY311_CMD -m pip install -e $SCRIPT_DIR --verbose"
+    echo "  Try manually: $PY311_CMD -m pip install $SCRIPT_DIR --verbose"
     echo ""
     exit 1
 fi
