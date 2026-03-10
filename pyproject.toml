@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "litewing"
-version = "0.1.0"
+version = "0.1.1"
 description = "Beginner-friendly Python library for LiteWing drone control"
 readme = "README.md"
 license = {text = "MIT"}
