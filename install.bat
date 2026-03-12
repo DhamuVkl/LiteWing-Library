@@ -87,7 +87,7 @@ if errorlevel 1 (
 
 echo.
 echo   Installing Python %PYTHON_VERSION%...
-echo   !DIM!This takes 1-2 minutes, please wait...!R!
+echo   !DIM!Allow Permission to Install. This takes minutes, please wait...!R!
 echo.
 
 "%TEMP%\%PYTHON_INSTALLER%" /quiet InstallAllUsers=0 PrependPath=1 Include_test=0 Include_launcher=1
@@ -159,7 +159,8 @@ echo.
 echo   !BLD!To fly your drone:!R!
 echo     1. Turn on the drone
 echo     2. Connect to the drone's WiFi network
-echo     3. Run: !CYN!!PY311_CMD! examples\level_1\01_battery_voltage.py!R!
+echo     3. Go to the LiteWing-Library Folder
+echo     4. Run: !CYN!!PY311_CMD! examples\level_1\01_battery_voltage.py!R!
 echo.
 popd
 pause
